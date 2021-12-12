@@ -1,93 +1,73 @@
-
 /*
- *
- * DRF - Added rounding to f/stop stepping
- * DRF - Fixed missing cases for LCD operation and LED dimming
- * DRF - Change relay output to active low
- * DRF - Eliminated startp scroll brag line
- * DRF - Fixed LCD clearing issues, extraneous letters left on screen
- * DRF - Initialized button and mode pins with internal pullups
- * DRF - Changed button sense to active low
- *
- Darkroom timer with programmable functions
- Supported models: DL002A CMG001A
 
- This sketch implements a darkroom timer with various modes.
- It's developed after Daniele Lucarelli's version on analogica.it
- (http://www.analogica.it/upgrade-timer-con-keypad-t6797.html)
+   DRF - Added rounding to f/stop stepping
+   DRF - Fixed missing cases for LCD operation and LED dimming
+   DRF - Change relay output to active low
+   DRF - Eliminated startp scroll brag line
+   DRF - Fixed LCD clearing issues, extraneous letters left on screen
+   DRF - Initialized button and mode pins with internal pullups
+   DRF - Changed button sense to active low
 
- To build this sketch you need, besides core libraries, the Keypad.h
- library: http://playground.arduino.cc/code/Keypad
+  Darkroom timer with programmable functions
+  Supported models: DL002A CMG001A
 
- The circuit:
- * Arduino UNO/Duemilanove
- * 4x4 keypad
- * buzzer
- * pushbutton
- * female 1/4" jack and pedal (optional)
- * 220V relay
- * 2 toggle switch
+  This sketch implements a darkroom timer with various modes.
+  It's developed after Daniele Lucarelli's version on analogica.it
+  (http://www.analogica.it/upgrade-timer-con-keypad-t6797.html)
 
- Model DL002A specific components:
- * 7-Segment 4 number serial LCD display
- * Grove LED Bar
+  To build this sketch you need, besides core libraries, the Keypad.h
+  library: http://playground.arduino.cc/code/Keypad
 
- Model CMG001A specific components
- * 16x2 matrix LCD display
- * 1 or 2 potentiometers
+  The circuit:
+   Arduino UNO/Duemilanove
+   4x4 keypad
+   buzzer
+   pushbutton
+   female 1/4" jack and pedal (optional)
+   220V relay
+   2 toggle switch
 
- The wiring schemes should come with this sketch, if not drop me a line.
+  Model DL002A specific components:
+   7-Segment 4 number serial LCD display
+   Grove LED Bar
 
- ### Pin Map Recap - DL002A ###
- D0:
- D1:
- D(2, 3, 4, 5, 6, 7, 8, 9): Keypad
- D10: Buzzer
- D11: Relay
- D12: progression switch (linear or f/stop) - maybe superfluous?
- D13: main button (pedal/pushbutton)
- A(0, 1): Ledbar
- A2: 7 segment display
+  Model CMG001A specific components
+   16x2 matrix LCD display
+   1 or 2 potentiometers
+
+  The wiring schemes should come with this sketch, if not drop me a line.
+
+  ### Pin Map Recap - DL002A ###
+  D0:
+  D1:
+  D(2, 3, 4, 5, 6, 7, 8, 9): Keypad
+  D10: Buzzer
+  D11: Relay
+  D12: progression switch (linear or f/stop) - maybe superfluous?
+  D13: main button (pedal/pushbutton)
+  A(0, 1): Ledbar
+  A2: 7 segment display
 
 
- created  11 Nov 2013
- by Daniele Lucarelli
- adapted with LCD 16x2 display 5 Dec 2013
- by Ciro Mattia Gonano <ciromattia@gmail.com>
+  created  11 Nov 2013
+  by Daniele Lucarelli
+  adapted with LCD 16x2 display 5 Dec 2013
+  by Ciro Mattia Gonano <ciromattia@gmail.com>
 
- Additional changes by DonF on Photorio. Posted to the following thread 8 Mar 2018
- https://www.photrio.com/forum/threads/homebrew-f-stop-timer.158118/
+  Additional changes by DonF on Photorio. Posted to the following thread 8 Mar 2018
+  https://www.photrio.com/forum/threads/homebrew-f-stop-timer.158118/
 
- */
+*/
 
 #include <Keypad.h>
 #include <avr/eeprom.h>
 
 #include "Timerino.h"  // include personal conf
 
-#if 0 == MYMODEL
-  // defines for LED Bar. They're set on analog pins 0-1, change accordingly
-  // if you wired the LED Bar to another location (refer to http://arduino.cc/en/Reference/PortManipulation)
-  #define LEDBar_DDRData  DDRC
-  #define LEDBar_DDRClk   DDRC
-  #define LEDBar_PORTData PORTC
-  #define LEDBar_PORTClk  PORTC
-  #define LEDBar_BITData  0x01
-  #define LEDBar_BITClk   0x02
-  #define CmdMode         0x0000  //Work on 8-bit mode
-  #define ON              0x00ff  //8-bit 1 data
-  #define SHUT            0x0000  //8-bit 0 data
-  // end defines for LCD Bar
-  #include <SoftwareSerial.h>
-  SoftwareSerial Serial7Segment(1,A2);
-  const byte lcdrxpin = A2;
-#elif 1 == MYMODEL
-  #include <LiquidCrystal.h>
+#include <LiquidCrystal.h>
 //  LiquidCrystal lcd(A0, A1, A2, A3, A4, A5);
 const int rs = A0, en = A1, d7 = A2, d6 = A3, d5 = A4, d4 = A5;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
-
-#endif
 
 // define wired pins
 const byte buzzer = 13; // buzzer pin
@@ -158,10 +138,10 @@ char _buffer[17];
 
 /* init matrix keypad */
 char keys[ROWS][COLS] = {
-  {'1','2','3','A' },
-  {'4','5','6','B' },
-  {'7','8','9','C' },
-  {'*','0','#','D' }
+  {'1', '2', '3', 'A' },
+  {'4', '5', '6', 'B' },
+  {'7', '8', '9', 'C' },
+  {'*', '0', '#', 'D' }
 };
 //byte rowPins[ROWS] = {5, 4, 3, 2}; //connect to the row pinouts of the keypad
 //byte colPins[COLS] = {9, 8, 7, 6}; //connect to the column pinouts of the keypad
@@ -178,428 +158,192 @@ void beep(int this_tone, int duration) {
     tone(buzzer, this_tone, duration);
 }
 void metronome() {
-  if (running && time%10 == 0) {
+  if (running && time % 10 == 0) {
     beep(tone_down, 80);
   }
 }
 void metronome_b() {
-  if (running && time_burn%10 == 0) {
+  if (running && time_burn % 10 == 0) {
     beep(tone_down, 80);
   }
 }
 
-#if 0 == MYMODEL  // add LED Bar functions
-  void LEDBar_set_LED_Index(unsigned int index) {
-    unsigned char i;
-    LEDBar_send16bitData(CmdMode);
-    for (i=0;i<12;i++) {
-      LEDBar_send16bitData(index&0x0001 ? ON : SHUT);
-      index= index>>1;
-    }
-    LEDBar_latchData();
-  }
-  void LEDBar_send16bitData(unsigned int data) {
-     for (unsigned char i=0;i<16;i++) {
-       data&0x8000 ? LEDBar_PORTData |= LEDBar_BITData : LEDBar_PORTData &=~ LEDBar_BITData;
-       LEDBar_PORTClk ^= LEDBar_BITClk;
-       data <<= 1;
-     }
-  }
-  void LEDBar_latchData(void) {
-      LEDBar_PORTData &=~ LEDBar_BITData;
-      delayMicroseconds(10);
-      for(unsigned char i=0;i<8;i++)
-        LEDBar_PORTData ^= LEDBar_BITData;
-  }
-#endif
-
 void setup_display() {
-  #if 0 == MYMODEL
-    LEDBar_set_LED_Index(0b000001111111111);
-    // Setup 7SegmentDisplay
-    Serial7Segment.begin(9600); // Connect to 7-Segment display in serial mode
-    Serial7Segment.write(0x76); // Display reset - brings cursors to the first char
 
-    //Leggere la luminositÃ  da eprom
-    Serial7Segment.write(0x7A);  // Brightness control command
-    Serial7Segment.write((byte) brightness);
-
-    Serial7Segment.write('A');
-    LEDBar_set_LED_Index(0b000000111111111);
-    delay(scrollTime);
-    Serial7Segment.write('N');
-    LEDBar_set_LED_Index(0b000000011111111);
-    delay(scrollTime);
-    Serial7Segment.write('A');
-    LEDBar_set_LED_Index(0b000000001111111);
-    delay(scrollTime);
-    Serial7Segment.write('L');
-    LEDBar_set_LED_Index(0b000000000111111);
-    delay(scrollTime);
-    Serial7Segment.print("NALO");
-    LEDBar_set_LED_Index(0b000000000011111);
-    delay(scrollTime);
-    Serial7Segment.print("ALOG");
-    LEDBar_set_LED_Index(0b000000000001111);
-    delay(scrollTime);
-    Serial7Segment.print("LOGI");
-    LEDBar_set_LED_Index(0b000000000000111);
-    delay(scrollTime);
-    Serial7Segment.print("OGIC");
-    LEDBar_set_LED_Index(0b000000000000011);
-    delay(scrollTime);
-    Serial7Segment.print("GICA");
-    Serial7Segment.write(0x77);
-    Serial7Segment.write(0b00001000);
-    LEDBar_set_LED_Index(0b000000000000001);
-    delay(scrollTime);
-    Serial7Segment.print("ICAI");
-    Serial7Segment.write(0x77);
-    Serial7Segment.write(0b00000100);
-    LEDBar_set_LED_Index(0b000000000000000);
-    delay(scrollTime);
-    Serial7Segment.print("CAIT");
-    Serial7Segment.write(0x77);
-    Serial7Segment.write(0b00000010);
-    LEDBar_set_LED_Index(0b000001000000000);
-    delay(scrollTime);
-    LEDBar_set_LED_Index(0b000000000000000);
-    delay(scrollTime);
-    LEDBar_set_LED_Index(0b000001000000000);
-    delay(scrollTime);
-    Serial7Segment.print("AIT ");
-    Serial7Segment.write(0x77);
-    Serial7Segment.write(0b00000001);
-    LEDBar_set_LED_Index(0b000000000000000);
-    delay(scrollTime);
-    Serial7Segment.print("IT  ");
-    Serial7Segment.write(0x77);
-    Serial7Segment.write(0b01000000);
-    LEDBar_set_LED_Index(0b000001000000000);
-    delay(scrollTime);
-    Serial7Segment.print("T  0");
-    LEDBar_set_LED_Index(0b000000000000000);
-    delay(scrollTime);
-    Serial7Segment.print("  00");
-    LEDBar_set_LED_Index(0b000001000000000);
-    delay(scrollTime);
-    Serial7Segment.print(" 000");
-    LEDBar_set_LED_Index(0b000000000000000);
-    delay(scrollTime);
-    reset();
-    delay(scrollTime);
-    delay(scrollTime);
-    LEDBar_set_LED_Index(0b000001000000000);
-  #elif 1 == MYMODEL
-    lcd.begin(16, 2);
-    lcd.clear();
-    /*
-    sprintf(_buffer,"%s","ANALOGICA.IT    ");
+  lcd.begin(16, 2);
+  lcd.clear();
+  /*
+    sprintf(_buffer,"%s","RF-Stop Timer   ");
     lcd.setCursor(16,1);
     lcd.autoscroll();
     for (int thisChar=0; thisChar < 16; thisChar++) {
-      lcd.print(_buffer[thisChar]);
-      delay(scrollTime);
+    lcd.print(_buffer[thisChar]);
+    delay(scrollTime);
     }
     lcd.noAutoscroll();
-    */
-  #endif
+  */
 }
 
 /*
-float myround(float f)   //Improved rounding function for predictable fstop inc/dec
-{
+  float myround(float f)   //Improved rounding function for predictable fstop inc/dec
+  {
   if (f >= 0x1.0p23) return f;
   return (float) (unsigned int) (f + 0.49999997f);
-}
+  }
 
 
-float myround(float f)
-{
+  float myround(float f)
+  {
   if (f >= 0x1.0p23) return f;
   if (f <= 0.5) return 0;
   return (float) (unsigned int) (f + 0.5f);
-}
+  }
 
 */
 
 void say_ch() {
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x76);
-    switch (ch) {
-      case 0:
-        Serial7Segment.print("Ch-1");
-        break;
-      case 1:
-        Serial7Segment.print("Ch-2");
-        break;
-      case 2:
-        Serial7Segment.print("Ch-3");
-        break;
-      case 3:
-        Serial7Segment.print("Ch-4");
-        break;
-      case 4:
-        Serial7Segment.print("Ch-5");
-        break;
-      case 5:
-        Serial7Segment.print("Ch-6");
-        break;
-      case 6:
-        Serial7Segment.print("Ch-7");
-        break;
-      case 7:
-        Serial7Segment.print("Ch-8");
-        break;
-      case 8:
-        Serial7Segment.print("Ch-9");
-        break;
-    }
-
-    #elif 1 == MYMODEL
-    switch (ch) {
-      case 0:
-        lcd.setCursor(0,1);
-        lcd.print("Ch-1");
-        break;
-      case 1:
-        lcd.setCursor(0,1);
-        lcd.print("Ch-2");
-        break;
-      case 2:
-        lcd.setCursor(0,1);
-        lcd.print("Ch-3");
-        break;
-      case 3:
-        lcd.setCursor(0,1);
-        lcd.print("Ch-4");
-        break;
-      case 4:
-        lcd.setCursor(0,1);
-        lcd.print("Ch-5");
-        break;
-      case 5:
-        lcd.setCursor(0,1);
-        lcd.print("Ch-6");
-        break;
-      case 6:
-        lcd.setCursor(0,1);
-        lcd.print("Ch-7");
-        break;
-      case 7:
-        lcd.setCursor(0,1);
-        lcd.print("Ch-8");
-        break;
-      case 8:
-        lcd.setCursor(0,1);
-        lcd.print("Ch-9");
-        break;
-    }
-    #endif
+  switch (ch) {
+    case 0:
+      lcd.setCursor(0, 1);
+      lcd.print("Ch-1");
+      break;
+    case 1:
+      lcd.setCursor(0, 1);
+      lcd.print("Ch-2");
+      break;
+    case 2:
+      lcd.setCursor(0, 1);
+      lcd.print("Ch-3");
+      break;
+    case 3:
+      lcd.setCursor(0, 1);
+      lcd.print("Ch-4");
+      break;
+    case 4:
+      lcd.setCursor(0, 1);
+      lcd.print("Ch-5");
+      break;
+    case 5:
+      lcd.setCursor(0, 1);
+      lcd.print("Ch-6");
+      break;
+    case 6:
+      lcd.setCursor(0, 1);
+      lcd.print("Ch-7");
+      break;
+    case 7:
+      lcd.setCursor(0, 1);
+      lcd.print("Ch-8");
+      break;
+    case 8:
+      lcd.setCursor(0, 1);
+      lcd.print("Ch-9");
+      break;
+  }
 }
 
 void say_reset() {
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x76);
-    Serial7Segment.print("0000");
-    Serial7Segment.write(0x77);
-    Serial7Segment.write(0b00000100);
-  #elif 1 == MYMODEL
-    lcd.setCursor(0,0);
-    lcd.clear();
-  #endif
+  lcd.setCursor(0, 0);
+  lcd.clear();
 }
 
 void say_clearprecis() {
-  #if 0 == MYMODEL
-    LEDBar_set_LED_Index(0b000000000000000);
-    say_reset();
-  #elif 1 == MYMODEL
-    lcd.setCursor(12,1);
-    lcd.print("     ");
-  #endif
+  lcd.setCursor(12, 1);
+  lcd.print("     ");
 }
 void say_cleartime() {
-  #if 0 == MYMODEL
-    say_reset();
-  #elif 1 == MYMODEL
-    lcd.setCursor(0,1);
-    lcd.print("        ");
-  #endif
+  lcd.setCursor(0, 1);
+  lcd.print("        ");
 }
 void say_time() {
   //say_cleartime();
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x77);
-    Serial7Segment.write(0b00000100); // light up 1 decimal point
-    sprintf(_buffer, "%04i", time);
-    Serial7Segment.write(_buffer);
-  #elif 1 == MYMODEL
-    float ftime = time > 0 ? (float)time / 10 : 0.0;
-    dtostrf(ftime, 3, 1, _buffer);
-    lcd.setCursor(0,1);
-    lcd.print(_buffer);
-  #endif
+  float ftime = time > 0 ? (float)time / 10 : 0.0;
+  dtostrf(ftime, 3, 1, _buffer);
+  lcd.setCursor(0, 1);
+  lcd.print(_buffer);
 }
 
 void say_time_b() {
   //say_cleartime();
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x77);
-    Serial7Segment.write(0b00000100); // light up 1 decimal point
-    sprintf(_buffer, "%04i", time_burn);
-    Serial7Segment.write(_buffer);
-  #elif 1 == MYMODEL
-    float ftime = time_burn > 0 ? (float)time_burn / 10 : 0.0;
-    dtostrf(ftime, 3, 1, _buffer);
-    lcd.setCursor(0,1);
-    lcd.print(_buffer);
-  #endif
+  float ftime = time_burn > 0 ? (float)time_burn / 10 : 0.0;
+  dtostrf(ftime, 3, 1, _buffer);
+  lcd.setCursor(0, 1);
+  lcd.print(_buffer);
 }
 
 void say_prec() {
   say_clearprecis();
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x76);
-    switch (precis) {
-      case 1:
-        LEDBar_set_LED_Index(0b000001000000000);
-        Serial7Segment.print("1-1 ");
-        break;
-      case 2:
-        LEDBar_set_LED_Index(0b000001100000000);
-        Serial7Segment.print("1-2 ");
-        break;
-      case 3:
-        LEDBar_set_LED_Index(0b000001110000000);
-        Serial7Segment.print("1-3 ");
-        break;
-      case 4:
-        LEDBar_set_LED_Index(0b000001111000000);
-        Serial7Segment.print("1-4 ");
-        break;
-      case 6:
-        LEDBar_set_LED_Index(0b000001111100000);
-        Serial7Segment.print("1-6 ");
-        break;
-      case 8:
-        LEDBar_set_LED_Index(0b000001111110000);
-        Serial7Segment.print("1-8 ");
-        break;
-      case 12:
-        LEDBar_set_LED_Index(0b000001111111000);
-        Serial7Segment.print("1-12");
-        break;
-      case 24:
-        LEDBar_set_LED_Index(0b000001111111100);
-        Serial7Segment.print("1-24");
-        break;
-      case 32:
-        LEDBar_set_LED_Index(0b000001111111110);
-        Serial7Segment.print("1-32");
-        break;
-      case 48:
-        LEDBar_set_LED_Index(0b000001111111111);
-        Serial7Segment.print("1-48");
-        break;
-    }
-  #elif 1 == MYMODEL
-    switch(precis) {
-      case 1: lcd.setCursor(15,1); lcd.print("1");   break;
-      case 2: lcd.setCursor(13,1); lcd.print("1/2"); break;
-      case 3: lcd.setCursor(13,1); lcd.print("1/3"); break;
-      case 4: lcd.setCursor(13,1); lcd.print("1/4"); break;
-      case 6: lcd.setCursor(13,1); lcd.print("1/6"); break;
-      case 8: lcd.setCursor(13,1); lcd.print("1/8"); break;
-      case 12: lcd.setCursor(12,1); lcd.print("1/12"); break;
-      case 24: lcd.setCursor(12,1); lcd.print("1/24"); break;
-      case 32: lcd.setCursor(12,1); lcd.print("1/32"); break;
-      case 48: lcd.setCursor(12,1); lcd.print("1/48"); break;
-    }
-  #endif
+  switch (precis) {
+    case 1: lcd.setCursor(15, 1); lcd.print("1");   break;
+    case 2: lcd.setCursor(13, 1); lcd.print("1/2"); break;
+    case 3: lcd.setCursor(13, 1); lcd.print("1/3"); break;
+    case 4: lcd.setCursor(13, 1); lcd.print("1/4"); break;
+    case 6: lcd.setCursor(13, 1); lcd.print("1/6"); break;
+    case 8: lcd.setCursor(13, 1); lcd.print("1/8"); break;
+    case 12: lcd.setCursor(12, 1); lcd.print("1/12"); break;
+    case 24: lcd.setCursor(12, 1); lcd.print("1/24"); break;
+    case 32: lcd.setCursor(12, 1); lcd.print("1/32"); break;
+    case 48: lcd.setCursor(12, 1); lcd.print("1/48"); break;
+  }
 }
 
 void say_free() {
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x76);
-    Serial7Segment.print("LINE");
-    beep(tone_down, 200);
-    delay(500);
-  #elif 1 == MYMODEL
-    lcd.setCursor(0,0);
-    lcd.print("Setup Mode       ");
-    beep(tone_up, 200);
-  #endif
+  lcd.setCursor(0, 0);
+  lcd.print("Setup Mode       ");
+  beep(tone_up, 200);
+
   say_clearprecis();
   say_cleartime();
 
-  #if 1 == EPR
-    eeprom_write_byte(0, MODLINFREE);
-  #endif
+#if 1 == EPR
+  eeprom_write_byte(0, MODLINFREE);
+#endif
 
 }
-void say_up(){
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x76);
-    Serial7Segment.print("Up  ");
-    beep(tone_down, 200);
-    delay(500);
-  #elif 1 == MYMODEL
-    lcd.setCursor(0,0);
-    lcd.print("Stopwatch       ");
-    beep(tone_up, 200);
-  #endif
+void say_up() {
+  lcd.setCursor(0, 0);
+  lcd.print("Stopwatch       ");
+  beep(tone_up, 200);
+
   say_clearprecis();
   say_cleartime();
   say_time();
 
-  #if 1 == EPR
-    eeprom_write_byte(0, MODLINUP);
-  #endif
+#if 1 == EPR
+  eeprom_write_byte(0, MODLINUP);
+#endif
 
 }
-void say_down(){
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x76);
-    Serial7Segment.print("DouN");
-    beep(tone_down, 200);
-    delay(500);
-  #elif 1 == MYMODEL
-    lcd.setCursor(0,0);
-    lcd.print("Countdown       ");
-    beep(tone_down, 200);
-  #endif
+void say_down() {
+  lcd.setCursor(0, 0);
+  lcd.print("Countdown       ");
+  beep(tone_down, 200);
+
   say_clearprecis();
   say_cleartime();
   say_time();
 
-  #if 1 == EPR
-    eeprom_write_byte(0, MODLINDOWN);
-  #endif
+#if 1 == EPR
+  eeprom_write_byte(0, MODLINDOWN);
+#endif
 
 }
 void say_dds() {
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x76);
-    Serial7Segment.print("DDS ");
-    beep(tone_down, 200);
-    delay(500);
-  #elif 1 == MYMODEL
-    lcd.setCursor(0,0);
-    lcd.print("DDS Mode        ");
-    beep(tone_down, 200);
-  #endif
+  lcd.setCursor(0, 0);
+  lcd.print("DDS Mode        ");
+  beep(tone_down, 200);
+
   say_clearprecis();
   say_cleartime();
   say_time();
 
-  #if 1 == EPR
-    eeprom_write_byte(0, MODLINDDS);
-  #endif
+#if 1 == EPR
+  eeprom_write_byte(0, MODLINDDS);
+#endif
 
 }
 /*
-void say_fstop(){
+  void say_fstop(){
   #if 0 == MYMODEL
     Serial7Segment.write(0x76);
     Serial7Segment.print("F-ST");
@@ -617,117 +361,77 @@ void say_fstop(){
     eeprom_write_byte(0, MODFSTFREE);
   #endif
 
-}
+  }
 */
 void say_precis() {
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x76);
-    Serial7Segment.print("pREC");
-    beep(tone_down, 200);
-    delay(500);
-  #elif 1 == MYMODEL
-    lcd.setCursor(0,0);
-    lcd.print("F/Stop Precision");
-    beep(tone_down, 200);
-    say_cleartime();
-  #endif
+  lcd.setCursor(0, 0);
+  lcd.print("F/Stop Precision");
+  beep(tone_down, 200);
+  say_cleartime();
+
   say_prec();
 
-  #if 1 == EPR
-    eeprom_write_byte(0, MODFSTPREC);
-  #endif
+#if 1 == EPR
+  eeprom_write_byte(0, MODFSTPREC);
+#endif
 
 }
 void say_test_strip() {
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x76);
-    Serial7Segment.print("pROS");
-    beep(tone_down, 200);
-    delay(500);
-  #elif 1 == MYMODEL
-    lcd.setCursor(0,0);
-    lcd.print("F/stop TestStrip");
-    beep(tone_down, 200);
-  #endif
+  lcd.setCursor(0, 0);
+  lcd.print("F/stop TestStrip");
+  beep(tone_down, 200);
+
   say_prec();
   say_cleartime();
   say_time();
 
-  #if 1 == EPR
-    eeprom_write_byte(0, MODFSTTEST);
-  #endif
+#if 1 == EPR
+  eeprom_write_byte(0, MODFSTTEST);
+#endif
 
 }
 void say_fstopdown() {
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x76);
-    Serial7Segment.print("CFST");
-    beep(tone_down, 200);
-    delay(500);
-  #elif 1 == MYMODEL
-    lcd.setCursor(0,0);
-    lcd.print("F/stop Countdown");
-    beep(tone_down, 200);
-  #endif
+  lcd.setCursor(0, 0);
+  lcd.print("F/stop Countdown");
+  beep(tone_down, 200);
+
   say_prec();
   say_cleartime();
   say_time();
 
-  #if 1 == EPR
-    eeprom_write_byte(0, MODFSTDOWN);
-  #endif
+#if 1 == EPR
+  eeprom_write_byte(0, MODFSTDOWN);
+#endif
 
 }
 
 void say_burn() {
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x76);
-    Serial7Segment.print("bURn");
-    beep(tone_down, 200);
-    delay(500);
-  #elif 1 == MYMODEL
-    lcd.setCursor(0,0);
-    lcd.print("F/stopBurn&Dodge");
-    beep(tone_down, 200);
-  #endif
+  lcd.setCursor(0, 0);
+  lcd.print("F/stopBurn&Dodge");
+  beep(tone_down, 200);
+
   say_prec();
   say_cleartime();
   say_time();
 
-  #if 1 == EPR
-    eeprom_write_byte(0, MODFSTBURN);
-  #endif
+#if 1 == EPR
+  eeprom_write_byte(0, MODFSTBURN);
+#endif
 
 }
 
 void say_sound() {
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x76);
-    Serial7Segment.print("S_On");
-    beep(tone_down, 200);
-    eeprom_write_byte(5, false);
-    delay(500);
-  #elif 1 == MYMODEL
-    lcd.setCursor(0,0);
-    lcd.print("Sound On        ");
-    beep(tone_down, 200);
-    eeprom_write_byte(5, false);
-  #endif
+  lcd.setCursor(0, 0);
+  lcd.print("Sound On        ");
+  beep(tone_down, 200);
+  eeprom_write_byte(5, false);
 }
 
 void say_mute() {
-  #if 0 == MYMODEL
-    Serial7Segment.write(0x76);
-    Serial7Segment.print("S_OF");
-    beep(tone_down, 200);
-    eeprom_write_byte(5, true);
-    delay(500);
-  #elif 1 == MYMODEL
-    lcd.setCursor(0,0);
-    lcd.print("Sound Off       ");
-    beep(tone_down, 200);
-    eeprom_write_byte(5, true);
-  #endif
+  lcd.setCursor(0, 0);
+  lcd.print("Sound Off       ");
+  beep(tone_down, 200);
+  eeprom_write_byte(5, true);
 }
 
 void say_timermode() {
@@ -812,7 +516,7 @@ void test_strip() {
     say_time();
     if (time == time_succ) {
       beep(tone_up, 150);
-      mult = pow(2.0,(1.0/precis));
+      mult = pow(2.0, (1.0 / precis));
       time_succ = int(float(time) * mult);
     }
     if (time_succ - time <= 3) {
@@ -833,29 +537,31 @@ void reset() {
 
 // Manage brightness and audio on / off in EEPROM
 #if 1 == EPR
-  void load_eeprom() {
-    brightness = eeprom_read_word((uint16_t *)1);      // 2 byte
-    precis = eeprom_read_word((uint16_t *)3);          // 2 byte
+void load_eeprom() {
+  brightness = eeprom_read_word((uint16_t *)1);      // 2 byte
+  precis = eeprom_read_word((uint16_t *)3);          // 2 byte
 
-    timer_mode = eeprom_read_byte(0);
-    // if mode is not valid set the first one
-    if ((timer_mode & 0b11000) > 0) {
-      timer_mode = MODLINFREE;
-      //return;
-    }
-
-    mute = eeprom_read_byte(5);
-    // if mute is not valid set to unmute
-    if (mute > 1) {mute = false;}
-
-/*
-    time_countdown = eeprom_read_word((uint16_t *)1);  // 2 byte
-    time_dds = eeprom_read_word((uint16_t *)3);        // 2 byte
-    time_fsttest = eeprom_read_word((uint16_t *)5);    // 2 byte
-    time_fstdown = eeprom_read_word((uint16_t *)7);    // 2 byte
-    time_burn = eeprom_read_word((uint16_t *)11);      // 2 byte
-*/
+  timer_mode = eeprom_read_byte(0);
+  // if mode is not valid set the first one
+  if ((timer_mode & 0b11000) > 0) {
+    timer_mode = MODLINFREE;
+    //return;
   }
+
+  mute = eeprom_read_byte(5);
+  // if mute is not valid set to unmute
+  if (mute > 1) {
+    mute = false;
+  }
+
+  /*
+      time_countdown = eeprom_read_word((uint16_t *)1);  // 2 byte
+      time_dds = eeprom_read_word((uint16_t *)3);        // 2 byte
+      time_fsttest = eeprom_read_word((uint16_t *)5);    // 2 byte
+      time_fstdown = eeprom_read_word((uint16_t *)7);    // 2 byte
+      time_burn = eeprom_read_word((uint16_t *)11);      // 2 byte
+  */
+}
 #endif
 
 void init_timermode() {
@@ -908,7 +614,7 @@ void read_key() {
   boolean ast = false;
   boolean canc = false;
   if (keypad.getKeys()) { //Fill an array with all the keys pressed
-    for (int ki=0; ki<LIST_MAX; ki++) { // Browse the array
+    for (int ki = 0; ki < LIST_MAX; ki++) { // Browse the array
       if (keypad.key[ki].kchar != NO_KEY) {
         key = keypad.key[ki].kchar;
         if (key == '*') {
@@ -946,26 +652,22 @@ void read_key() {
         break;
 
       case '%': // reset
-      #if 0 == MYMODEL
-        reset();
-      #elif 1 == MYMODEL //Needed to clear only second line of LCD display with variable reset
-          time = 0;
-          ncifra = 0;
-          appo_time = 0;
-          time_burn = 0;
-          firstpress = true;
-          scherma = false;
-          lcd.setCursor(0,1);
-          lcd.print("     ");
-          say_time();
-          lcd.setCursor(0,0);
-       #endif
+        time = 0;
+        ncifra = 0;
+        appo_time = 0;
+        time_burn = 0;
+        firstpress = true;
+        scherma = false;
+        lcd.setCursor(0, 1);
+        lcd.print("     ");
+        say_time();
+        lcd.setCursor(0, 0);
         break;
 
       case '*':
         if (timer_mode == MODFSTDOWN) {
           // Step down
-          mult = pow(2.0, (1.0/precis));
+          mult = pow(2.0, (1.0 / precis));
           time = int(round(float(time) / mult));
           //time = int(float(time) / mult);
           if (time <= 1)
@@ -975,7 +677,7 @@ void read_key() {
         } else if (timer_mode == MODFSTBURN) {      /////////////////////////////////////////////
           //Scherma
           scherma = true;
-          mult = 1.0/precis;
+          mult = 1.0 / precis;
           time_burn = int(round(float(time) * mult));
           //time_burn = int(float(time) * mult);
           if (time >= 9999)
@@ -983,23 +685,13 @@ void read_key() {
           say_time_b();
           firstpress = true;
         } else if (timer_mode == MODLINFREE) {
-          #if 0 == MYMODEL
-          if (brightness != 0) {
-            brightness = brightness - 10;
-            Serial7Segment.write(0x7A);  // Brightness control command
-            Serial7Segment.write((byte) brightness);
-            #if 1 == EPR
-              eeprom_write_word((uint16_t *)1, brightness);
-            #endif
-          }
-          #endif
         }
         break;
 
       case '#':
         if (timer_mode == MODFSTDOWN) {
           // Step up
-          mult = pow(2.0, (1.0/precis));
+          mult = pow(2.0, (1.0 / precis));
           time = int(round(float(time) * mult));
           //time = int(float(time) * mult);
           if (time >= 9999)
@@ -1009,7 +701,7 @@ void read_key() {
         } else if (timer_mode == MODFSTBURN) {
           //Brucia
           scherma = false;
-          mult = 1.0/precis;
+          mult = 1.0 / precis;
           time_burn = int(round(float(time) * mult));
           //time_burn = int(float(time) * mult);
           if (time_burn >= 9999)
@@ -1017,16 +709,6 @@ void read_key() {
           say_time_b();
           firstpress = true;
         } else if (timer_mode == MODLINFREE) {
-          #if 0 == MYMODEL
-          if (brightness != 100) {
-            brightness = brightness + 10;
-            Serial7Segment.write(0x7A);  // Brightness control command
-            Serial7Segment.write((byte) brightness);
-            #if 1 == EPR
-              eeprom_write_word((uint16_t *)1, brightness);
-            #endif
-          }
-          #endif
         }
         break;
 
@@ -1070,110 +752,104 @@ void read_key() {
         } else if (timer_mode == MODFSTPREC) { // set precision
           switch (key) {
             case '1':  precis = 1; say_prec();
-                      #if 1 == EPR
-                        eeprom_write_word((uint16_t *)3, precis);
-                      #endif
-                      break;
+#if 1 == EPR
+              eeprom_write_word((uint16_t *)3, precis);
+#endif
+              break;
             case '2':  precis = 2; say_prec();
-                     #if 1 == EPR
-                        eeprom_write_word((uint16_t *)3, precis);
-                     #endif
-                     break;
+#if 1 == EPR
+              eeprom_write_word((uint16_t *)3, precis);
+#endif
+              break;
             case '3':  precis = 3; say_prec();
-                     #if 1 == EPR
-                        eeprom_write_word((uint16_t *)3, precis);
-                     #endif
-                     break;
+#if 1 == EPR
+              eeprom_write_word((uint16_t *)3, precis);
+#endif
+              break;
             case '4':  precis = 4; say_prec();
-                      #if 1 == EPR
-                        eeprom_write_word((uint16_t *)3, precis);
-                      #endif
-                      break;
+#if 1 == EPR
+              eeprom_write_word((uint16_t *)3, precis);
+#endif
+              break;
             case '5':  precis = 6; say_prec();
-                      #if 1 == EPR
-                        eeprom_write_word((uint16_t *)3, precis);
-                      #endif
-                      break;
+#if 1 == EPR
+              eeprom_write_word((uint16_t *)3, precis);
+#endif
+              break;
             case '6':  precis = 8; say_prec();
-                      #if 1 == EPR
-                        eeprom_write_word((uint16_t *)3, precis);
-                      #endif
-                      break;
+#if 1 == EPR
+              eeprom_write_word((uint16_t *)3, precis);
+#endif
+              break;
             case '7':  precis = 12; say_prec();
-                      #if 1 == EPR
-                        eeprom_write_word((uint16_t *)3, precis);
-                      #endif
-                      break;
+#if 1 == EPR
+              eeprom_write_word((uint16_t *)3, precis);
+#endif
+              break;
             case '8':  precis = 24; say_prec();
-                      #if 1 == EPR
-                        eeprom_write_word((uint16_t *)3, precis);
-                      #endif
-                      break;
+#if 1 == EPR
+              eeprom_write_word((uint16_t *)3, precis);
+#endif
+              break;
             case '9':  precis = 32; say_prec();
-                      #if 1 == EPR
-                        eeprom_write_word((uint16_t *)3, precis);
-                      #endif
-                      break;
+#if 1 == EPR
+              eeprom_write_word((uint16_t *)3, precis);
+#endif
+              break;
             case '0':  precis = 48; say_prec();
-                      #if 1 == EPR
-                        eeprom_write_word((uint16_t *)3, precis);
-                      #endif
-                      break;
+#if 1 == EPR
+              eeprom_write_word((uint16_t *)3, precis);
+#endif
+              break;
             default: break;
           }
         } else {
-            switch (ncifra) {
-              case 0:
-                time = time + (key-48);
-                ncifra++;
-                break;
-              case 1:
-                time = time * 10 + (key-48);
-                ncifra++;
-                break;
-              case 2:
-                time = time * 10 + (key-48);
-                ncifra++;
-                break;
-              case 3:
-                time = time * 10 + (key-48);
-                ncifra++;
-                break;
-              default:
-                // Non faccio nulla
-                break;
-            }
+          switch (ncifra) {
+            case 0:
+              time = time + (key - 48);
+              ncifra++;
+              break;
+            case 1:
+              time = time * 10 + (key - 48);
+              ncifra++;
+              break;
+            case 2:
+              time = time * 10 + (key - 48);
+              ncifra++;
+              break;
+            case 3:
+              time = time * 10 + (key - 48);
+              ncifra++;
+              break;
+            default:
+              // Non faccio nulla
+              break;
+          }
           appo_time = time;
           say_time();
 
 
-  /*
-          if (time < 1) {
-            time = key == '0' ? 0 : key;
-          } else {
-            time *= 10;
-            if (time > 9999)
-              time %= 10000;
-            if (key != '0')
-              time += key;
-          }
-  */
+          /*
+                  if (time < 1) {
+                    time = key == '0' ? 0 : key;
+                  } else {
+                    time *= 10;
+                    if (time > 9999)
+                      time %= 10000;
+                    if (key != '0')
+                      time += key;
+                  }
+          */
 
 
-      }
+        }
     }
   }
 }
 
 void setup() {
-//  Serial.begin(9600);
-//  Serial.println(">>> Debug <<<");
-
-#if 0 == MYMODEL
-  // init LED Bar
-  LEDBar_DDRData |= LEDBar_BITData;
-  LEDBar_DDRClk |= LEDBar_BITClk;
-#endif
+  //  Serial.begin(9600);
+  //  Serial.println(">>> Debug <<<");
 
   /* ensure analog pins are set to OUTPUT */
   pinMode(A0, OUTPUT);
@@ -1184,14 +860,14 @@ void setup() {
   pinMode(A5, OUTPUT);
   pinMode(buzzer, OUTPUT);
   pinMode(relay, OUTPUT);
-     digitalWrite(relay, HIGH); // shut down the relay
+  digitalWrite(relay, HIGH); // shut down the relay
   pinMode(mainbtn, INPUT_PULLUP);
   pinMode(selector, INPUT_PULLUP);
 
   // read from EEPROM stored values
-  #if 1 == EPR
-    load_eeprom();
-  #endif
+#if 1 == EPR
+  load_eeprom();
+#endif
 
   // Setup display
   setup_display();
@@ -1200,14 +876,14 @@ void setup() {
   // bitClear(timer_mode,0); // linear mode
 
   /*
-  selstatus = digitalRead(selector);
-  lastselstatus = selstatus;
-  if (selstatus == HIGH) {
+    selstatus = digitalRead(selector);
+    lastselstatus = selstatus;
+    if (selstatus == HIGH) {
     bitSet(timer_mode,0); // f/stop mode
-  } else {
+    } else {
     bitClear(timer_mode,0); // linear mode
-  }
-*/
+    }
+  */
 
   // TODO: add event listener for keypad
   //keypad.addEventListener(keypadEvent);
@@ -1244,21 +920,25 @@ void loop() {
     errlet = millis();
   }
 
-/*  selstatus = digitalRead(selector);
-  if (selstatus != lastselstatus) {
-    // mode change
-    lastselstatus = selstatus;
-    timer_mode = (selstatus == HIGH) ? MODFSTPREC : MODLINFREE;
-    say_timermode();
-  } */
+  /*  selstatus = digitalRead(selector);
+    if (selstatus != lastselstatus) {
+      // mode change
+      lastselstatus = selstatus;
+      timer_mode = (selstatus == HIGH) ? MODFSTPREC : MODLINFREE;
+      say_timermode();
+    } */
 
   if (!running) { //Check for mode key depressed if timer not running
-      if (selbtnhigh == true) {
-        // mode select button has been pressed
-        //if (timer_mode == MODFSTPREC) {timer_mode = MODLINFREE;} else {timer_mode = MODFSTPREC;} //Toggle modes
-        if(bitRead(timer_mode, 0)) {bitClear(timer_mode,0);} else {bitSet(timer_mode,0);}  //Toggle linear/fstop modes
-        init_timermode();
+    if (selbtnhigh == true) {
+      // mode select button has been pressed
+      //if (timer_mode == MODFSTPREC) {timer_mode = MODLINFREE;} else {timer_mode = MODFSTPREC;} //Toggle modes
+      if (bitRead(timer_mode, 0)) {
+        bitClear(timer_mode, 0); //Toggle linear/fstop modes
+      } else {
+        bitSet(timer_mode, 0);
       }
+      init_timermode();
+    }
   }
   selbtnhigh = false;
 
@@ -1316,9 +996,9 @@ void loop() {
         time_countdown[ch] = appo_time;
         ncifra_countdown[ch] = ncifra;
         /*
-        #if 1 == EPR
+          #if 1 == EPR
           eeprom_write_word((uint16_t *)1, time_countdown);
-        #endif
+          #endif
         */
         if (time > 0) {
           digitalWrite(relay, LOW); // powerup the relay
@@ -1331,9 +1011,9 @@ void loop() {
         time_dds[ch] = appo_time;
         ncifra_dds[ch] = ncifra;
         /*
-        #if 1 == EPR
+          #if 1 == EPR
              eeprom_write_word((uint16_t *)3, time_dds);
-        #endif
+          #endif
         */
         if (time > 0) {
           digitalWrite(relay, LOW); // powerup the relay
@@ -1350,9 +1030,9 @@ void loop() {
         time_brn[ch] = appo_time;
         ncifra_brn[ch] = ncifra;
         /*
-        #if 1 == EPR
+          #if 1 == EPR
              eeprom_write_word((uint16_t *)3, time_dds);
-        #endif
+          #endif
         */
         if (scherma == true) {
           time = time - time_burn;
@@ -1370,11 +1050,11 @@ void loop() {
               countdown();
             }
           } else {
-              firstpress = false;
-              digitalWrite(relay, LOW); // powerup the relay
-              running = true;
-              last_time = millis(); // reset timer counter
-              countdown();
+            firstpress = false;
+            digitalWrite(relay, LOW); // powerup the relay
+            running = true;
+            last_time = millis(); // reset timer counter
+            countdown();
           }
         }
         break;
@@ -1383,9 +1063,9 @@ void loop() {
         time_fsttest[ch] = appo_time;
         ncifra_fsttest[ch] = ncifra;
         /*
-        #if 1 == EPR
+          #if 1 == EPR
              eeprom_write_word((uint16_t *)5, time_fsttest);
-        #endif
+          #endif
         */
         digitalWrite(relay, LOW); // powerup the relay
         running = true;
@@ -1400,9 +1080,9 @@ void loop() {
         time_fstdown[ch] = appo_time;
         ncifra_fstdown[ch] = ncifra;
         /*
-        #if 1 == EPR
+          #if 1 == EPR
              eeprom_write_word((uint16_t *)7, appo_time);
-        #endif
+          #endif
         */
         if (time > 0) {
           digitalWrite(relay, LOW); // powerup the relay
