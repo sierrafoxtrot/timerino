@@ -448,6 +448,14 @@ void say_timermode() {
   }
 }
 
+void turnRelayOn() {
+    digitalWrite(relay, RELAY_ON); // turn on the relay
+}
+
+void turnRelayOff() {
+    digitalWrite(relay, RELAY_OFF); // shut down the relay
+}
+
 
 /************ MODE FUNCTIONS ********/
 void off() {
@@ -461,7 +469,7 @@ void countdown() {
     say_time();
     if (time == 0) {
       // if time reached 0, shut down the relay and reset the function
-      digitalWrite(relay, HIGH);
+      turnRelayOff();
       running = false;
       time = appo_time;
       beep(tone_down, 75);
@@ -485,7 +493,7 @@ void countdown_b() {
     say_time_b();
     if (time_burn == 0) {
       // if time reached 0, shut down the relay and reset the function
-      digitalWrite(relay, HIGH);
+      turnRelayOff();
       running = false;
       //time = appo_time;
       beep(tone_down, 75);
@@ -899,7 +907,7 @@ void setup() {
   pinMode(A5, OUTPUT);
   pinMode(buzzer, OUTPUT);
   pinMode(relay, OUTPUT);
-  digitalWrite(relay, HIGH); // shut down the relay
+  turnRelayOff();
   pinMode(mainbtn, INPUT_PULLUP);
   pinMode(selector, INPUT_PULLUP);
 
@@ -983,7 +991,7 @@ void loop() {
 
   if (running && btnhigh) {
     // shut down the relay and pause the timer
-    digitalWrite(relay, HIGH);
+    turnRelayOff();
     btnhigh = false;
     running = false;
     if (timer_mode == MODLINDDS && firstpress) {
@@ -1021,12 +1029,12 @@ void loop() {
     switch (timer_mode) {
       case MODLINFREE:
       case MODFSTPREC:
-        digitalWrite(relay, LOW); // powerup the relay
+        turnRelayOn();
         running = true;
         off();
         break;
       case MODLINUP:
-        digitalWrite(relay, LOW); // powerup the relay
+        turnRelayOn();
         running = true;
         last_time = millis(); // reset timer counter
         stopwatch();
@@ -1040,7 +1048,7 @@ void loop() {
           #endif
         */
         if (time > 0) {
-          digitalWrite(relay, LOW); // powerup the relay
+          turnRelayOn();
           running = true;
           last_time = millis(); // reset timer counter
           countdown();
@@ -1055,7 +1063,7 @@ void loop() {
           #endif
         */
         if (time > 0) {
-          digitalWrite(relay, LOW); // powerup the relay
+          turnRelayOn();
           running = true;
           if (firstpress == true) {
             off();
@@ -1079,7 +1087,7 @@ void loop() {
 
         if (time > 0) {
           if (time_burn > 0) {
-            digitalWrite(relay, LOW); // powerup the relay
+            turnRelayOn();
             running = true;
             if (firstpress == true) {
               last_time = millis(); // reset timer counter
@@ -1090,7 +1098,7 @@ void loop() {
             }
           } else {
             firstpress = false;
-            digitalWrite(relay, LOW); // powerup the relay
+            turnRelayOn();
             running = true;
             last_time = millis(); // reset timer counter
             countdown();
@@ -1106,7 +1114,7 @@ void loop() {
              eeprom_write_word((uint16_t *)5, time_fsttest);
           #endif
         */
-        digitalWrite(relay, LOW); // powerup the relay
+        turnRelayOn();
         running = true;
         last_time = millis(); // reset timer counter
         if (time < 10)
@@ -1124,7 +1132,7 @@ void loop() {
           #endif
         */
         if (time > 0) {
-          digitalWrite(relay, LOW); // powerup the relay
+          turnRelayOn();
           running = true;
           last_time = millis(); // reset timer counter
           countdown();
