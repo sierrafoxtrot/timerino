@@ -611,22 +611,59 @@ void init_timermode() {
 //void keypadEvent(KeypadEvent key) {}
 void read_key() {
   char key = ' ';
-  boolean ast = false;
-  boolean canc = false;
+  static boolean ast = false;
+  static boolean canc = false;
+  boolean somethingPressed = false;
+
   if (keypad.getKeys()) { //Fill an array with all the keys pressed
     for (int ki = 0; ki < LIST_MAX; ki++) { // Browse the array
-      if (keypad.key[ki].kchar != NO_KEY) {
-        key = keypad.key[ki].kchar;
-        if (key == '*') {
-          ast = true;
+        if (keypad.key[ki].stateChanged) {
+
+            if (keypad.key[ki].kstate == PRESSED) {
+                somethingPressed = true; // We may have gotten here by a HOLD or IDLE event
+            }
+            key = keypad.key[ki].kchar;
+            if (key == '*') {
+                switch(keypad.key[ki].kstate) {
+                case PRESSED: // fall-through
+                case HOLD:
+                    ast = true;
+                    break;
+                case RELEASED: // fall-through
+                case IDLE:
+                default:
+                    ast = false;
+                }
+            }
+            if (key == '#') {
+                switch(keypad.key[ki].kstate) {
+                case PRESSED: // fall-through
+                case HOLD:
+                    canc = true;
+                    break;
+                case RELEASED: // fall-through
+                case IDLE:
+                default:
+                    canc = false;
+                }
+            }
         }
-        if (key == '#') {
-          canc = true;
-        }
-      }
     }
     if (ast == true && canc == true) {
-      key = '%';
+        key = '%';
+    }
+
+    if (somethingPressed) {
+#ifdef DEBUGGING
+        Serial.print("Key: ");
+        Serial.print("[");
+        Serial.print(key);
+        Serial.print("]");
+        Serial.println();
+#endif
+    }
+    else {
+        return;
     }
 
     switch (key) {
@@ -848,8 +885,10 @@ void read_key() {
 }
 
 void setup() {
-  //  Serial.begin(9600);
-  //  Serial.println(">>> Debug <<<");
+#ifdef DEBUGGING
+  Serial.begin(9600);
+  Serial.println(">>> Debug <<<");
+#endif
 
   /* ensure analog pins are set to OUTPUT */
   pinMode(A0, OUTPUT);

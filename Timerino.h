@@ -12,3 +12,6 @@
 // Set to 1 if you want last mode and times used be preserved when you
 // power off the timer
 #define EPR 1
+
+// Turn debugging on/off on serial output
+#undef DEBUGGING
